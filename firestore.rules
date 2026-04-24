@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
+        request.auth.token.email == 'godgiftakwah28@gmail.com' ||
+        request.auth.token.email == 'godgiftkabariledumakwah@gmail.com'
+      ); 
+    }
+    function incoming() { return request.resource.data; }
+
+    match /admins/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /staff/{staffId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      // Simple validation for MVP to prevent malicious spam
+      allow create: if true 
+        && incoming().keys().hasAll(['serviceId', 'staffId', 'date', 'startTime', 'endTime', 'clientName', 'clientPhone', 'status'])
+        && incoming().clientName is string && incoming().clientName.size() < 100
+        && incoming().clientPhone is string && incoming().clientPhone.size() < 20;
+      
+      // Allow public read so the client booking flow can query existing bookings for availability calculations. 
+      // Update/Delete remains strictly admin restricted, EXCEPT for clients cancelling their own booking.
+      allow read: if true;
+      allow update: if isAdmin() || (
+        incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy']) 
+        && incoming().status == 'cancelled' 
+        && incoming().get('cancelledBy', '') == 'client'
+        && resource.data.status in ['pending', 'confirmed']
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}

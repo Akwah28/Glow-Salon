@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile document containing roles",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["admin", "staff"] },
+        "email": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["role", "email"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "Service offered by the salon",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "price": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["title", "durationMinutes", "price", "isActive"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Staff member of the salon",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "isActive"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A client booking",
+      "type": "object",
+      "properties": {
+        "serviceId": { "type": "string" },
+        "staffId": { "type": "string" },
+        "date": { "type": "string", "description": "YYYY-MM-DD" },
+        "startTime": { "type": "string", "description": "HH:MM" },
+        "endTime": { "type": "string", "description": "HH:MM" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed", "no-show"] }
+      },
+      "required": ["serviceId", "staffId", "date", "startTime", "endTime", "clientName", "clientPhone", "status"]
+    },
+    "BusinessSettings": {
+      "title": "BusinessSettings",
+      "description": "General settings",
+      "type": "object",
+      "properties": {
+        "businessName": { "type": "string" },
+        "hours": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Admin and staff profiles"
+    },
+    "services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Global services"
+    },
+    "staff/{staffId}": {
+      "schema": { "$ref": "#/entities/Staff" },
+      "description": "Global staff list"
+    },
+    "bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "All bookings"
+    },
+    "settings/{settingId}": {
+      "schema": { "$ref": "#/entities/BusinessSettings" },
+      "description": "System settings"
+    }
+  }
+}
