@@ -20,9 +20,10 @@ export default function AdminLayout() {
       
       try {
         const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+        const adminEmailDoc = user.email ? await getDoc(doc(db, 'adminEmails', user.email)) : null;
         const isSuperAdminEmail = user.email === 'godgiftakwah28@gmail.com' || user.email === 'godgiftkabariledumakwah@gmail.com';
         
-        if (!adminDoc.exists() && !isSuperAdminEmail) {
+        if (!adminDoc.exists() && (!adminEmailDoc || !adminEmailDoc.exists()) && !isSuperAdminEmail) {
           auth.signOut();
           toast.error('Unauthorized access. Admin privileges required.');
           navigate('/admin/login', { replace: true });

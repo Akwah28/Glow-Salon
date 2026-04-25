@@ -51,6 +51,11 @@ export const defaultSettings: BusinessSettings = {
   },
   integrations: {
     webhookUrl: ''
+  },
+  socials: {
+    facebook: '',
+    instagram: '',
+    twitter: ''
   }
 };
 
@@ -86,6 +91,7 @@ export function mergeWithDefaultSettings(data: Partial<BusinessSettings> | undef
   if (data.payments) merged.payments = { ...merged.payments, ...data.payments };
   if (data.brand) merged.brand = { ...merged.brand, ...data.brand };
   if (data.integrations) merged.integrations = { ...merged.integrations, ...data.integrations };
+  if (data.socials) merged.socials = { ...merged.socials, ...data.socials };
   
   return merged;
 }

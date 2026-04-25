@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { CheckCircle2, Copy, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 import { BusinessSettings } from '../../types';
 
 export default function BookingSuccess() {
@@ -12,22 +10,7 @@ export default function BookingSuccess() {
   const booking = location.state?.booking;
 
   const [paymentStep, setPaymentStep] = useState<'initial' | 'pay_now' | 'pay_later'>('initial');
-  const [settings, setSettings] = useState<BusinessSettings | null>(null);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const docRef = doc(db, 'settings', 'general');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setSettings(docSnap.data() as BusinessSettings);
-        }
-      } catch (e) {
-        console.error("Failed to load settings:", e);
-      }
-    };
-    fetchSettings();
-  }, []);
+  const { settings } = useOutletContext<{ settings: BusinessSettings | null }>();
 
   const WALLET_DETAILS = {
     bank: settings?.payments?.bankName || "Zenith Bank",
@@ -88,6 +71,25 @@ Please find my receipt attached.` :
             )}
           </div>
         )}
+
+        {booking && booking.date && booking.startTime && (() => {
+           let startDt = new Date(`${booking.date}T${booking.startTime}:00`);
+           if (isNaN(startDt.getTime())) return null;
+           
+           let endDt = new Date(startDt.getTime() + 60*60*1000);
+           const formatDt = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+           
+           return (
+              <a 
+                 href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Appointment')}&dates=${formatDt(startDt)}/${formatDt(endDt)}&details=${encodeURIComponent('Appointment details')}`}
+                 target="_blank" 
+                 rel="noopener noreferrer"
+                 className="mt-2 inline-flex items-center justify-center gap-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg py-2.5 px-4 transition-colors w-full"
+              >
+                 Add to Google Calendar
+              </a>
+           )
+        })()}
 
         <hr className="border-slate-100" />
 

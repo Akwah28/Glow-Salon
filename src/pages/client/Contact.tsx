@@ -1,89 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import React from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { BusinessSettings } from '../../types';
-import { mergeWithDefaultSettings, defaultSettings } from '../../lib/settingsDefaults';
 import { MapPin, Phone, Mail, Clock, MessageCircle } from 'lucide-react';
 
 export default function Contact() {
-  const [settings, setSettings] = useState<BusinessSettings | null>(null);
+  const { settings } = useOutletContext<{ settings: BusinessSettings | null }>();
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const querySnapshot = await getDocs(query(collection(db, 'settings'), where('__name__', '==', 'general')));
-        if (!querySnapshot.empty) {
-           setSettings(mergeWithDefaultSettings(querySnapshot.docs[0].data() as Partial<BusinessSettings>));
-        } else {
-           setSettings(defaultSettings);
-        }
-      } catch (err) {
-        console.error("Error loading settings", err);
-      }
-    };
-    fetchSettings();
-  }, []);
-
-  const themeColor = settings?.brand?.themeColor || '#4f46e5';
+  const themeColor = settings?.brand?.themeColor || '#6c5c47';
 
   return (
-    <div className="bg-white pb-20 flex-1">
+    <div className="bg-[#f8f7f5] pb-20 flex-1 selection:bg-stone-200">
       {/* Header */}
-      <div className="relative bg-slate-900 py-24 text-center px-4 overflow-hidden">
-         <div className="absolute inset-0 z-0 opacity-40">
-            <img src="https://images.unsplash.com/photo-1600948836101-f9ffda59d250?auto=format&fit=crop&q=80&w=1600" alt="Salon Tools Background" className="w-full h-full object-cover" />
+      <div className="relative py-32 text-center px-4 overflow-hidden border-b border-stone-200 bg-[#fefdfb]">
+         <div className="absolute inset-0 z-0 opacity-20 filter grayscale">
+            <img referrerPolicy="no-referrer" src="https://images.unsplash.com/photo-1600948836101-f9ffda59d250?auto=format&fit=crop&q=80&w=1600" alt="Salon Tools Background" className="w-full h-full object-cover" />
          </div>
-         <div className="relative z-10">
-            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight drop-shadow-md">Contact Us</h1>
-            <p className="text-slate-200 max-w-2xl mx-auto text-lg sm:text-xl leading-relaxed drop-shadow">
+         <div className="relative z-10 max-w-3xl mx-auto">
+            <h1 className="text-5xl sm:text-6xl font-serif text-[#1a1a1a] mb-6 tracking-tight drop-shadow-sm">Contact Us</h1>
+            <p className="text-stone-500 max-w-2xl mx-auto text-lg leading-relaxed font-light">
                We'd love to hear from you. Get in touch with us for any inquiries, or visit us during our working hours.
             </p>
          </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-         <div className="grid md:grid-cols-2 gap-12 lg:gap-20">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-20">
+         <div className="grid md:grid-cols-2 gap-16 lg:gap-24">
             {/* Contact Information */}
-            <div className="space-y-10">
+            <div className="space-y-16">
                <div>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-6">Get in Touch</h3>
+                  <h3 className="text-3xl font-serif text-[#1a1a1a] mb-8">Get in Touch</h3>
                   
-                  <div className="space-y-6">
-                     {settings?.businessAddress && (
+                  <div className="space-y-8">
+                     {settings?.address && (
                         <div className="flex items-start gap-4">
-                           <div className="p-3 bg-slate-50 rounded-xl text-indigo-600 shrink-0" style={{ color: themeColor }}>
-                              <MapPin size={24} />
+                           <div className="p-4 bg-white rounded-2xl shrink-0 border border-stone-100 shadow-sm text-stone-700">
+                              <MapPin size={24} strokeWidth={1.5} />
                            </div>
                            <div>
-                              <h4 className="font-bold text-slate-900">Address</h4>
-                              <p className="text-slate-500 leading-relaxed mt-1">{settings.businessAddress}</p>
+                              <h4 className="font-serif text-[#1a1a1a] text-xl mb-1">Address</h4>
+                              <p className="text-stone-500 leading-relaxed font-light">{settings.address}</p>
                            </div>
                         </div>
                      )}
                      
                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-slate-50 rounded-xl text-indigo-600 shrink-0" style={{ color: themeColor }}>
-                           <Phone size={24} />
+                        <div className="p-4 bg-white rounded-2xl shrink-0 border border-stone-100 shadow-sm text-stone-700">
+                           <Phone size={24} strokeWidth={1.5} />
                         </div>
                         <div>
-                           <h4 className="font-bold text-slate-900">Phone</h4>
-                           <p className="text-slate-500 leading-relaxed mt-1">
+                           <h4 className="font-serif text-[#1a1a1a] text-xl mb-1">Phone</h4>
+                           <p className="text-stone-500 leading-relaxed font-light">
                               {settings?.whatsappNumber ? (
-                                 <a href={`tel:${settings.whatsappNumber}`} className="hover:underline">{settings.whatsappNumber}</a>
+                                 <a href={`tel:${settings.whatsappNumber}`} className="hover:text-stone-800 transition-colors">{settings.whatsappNumber}</a>
                               ) : "+1 (555) 000-0000"}
                            </p>
                         </div>
                      </div>
 
                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-slate-50 rounded-xl text-indigo-600 shrink-0" style={{ color: themeColor }}>
-                           <Mail size={24} />
+                        <div className="p-4 bg-white rounded-2xl shrink-0 border border-stone-100 shadow-sm text-stone-700">
+                           <Mail size={24} strokeWidth={1.5} />
                         </div>
                         <div>
-                           <h4 className="font-bold text-slate-900">Email</h4>
-                           <p className="text-slate-500 leading-relaxed mt-1">
+                           <h4 className="font-serif text-[#1a1a1a] text-xl mb-1">Email</h4>
+                           <p className="text-stone-500 leading-relaxed font-light">
                               {settings?.businessEmail ? (
-                                 <a href={`mailto:${settings.businessEmail}`} className="hover:underline">{settings.businessEmail}</a>
+                                 <a href={`mailto:${settings.businessEmail}`} className="hover:text-stone-800 transition-colors">{settings.businessEmail}</a>
                               ) : "hello@example.com"}
                            </p>
                         </div>
@@ -92,12 +74,12 @@ export default function Contact() {
                </div>
 
                <div>
-                 <h3 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-3">
-                    <Clock size={24} style={{ color: themeColor }} />
+                 <h3 className="text-3xl font-serif text-[#1a1a1a] mb-8 flex items-center gap-3">
+                    <Clock size={28} className="text-stone-400 font-light" />
                     Business Hours
                   </h3>
-                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                    <ul className="space-y-3">
+                 <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm">
+                    <ul className="space-y-4">
                        {['0','1','2','3','4','5','6'].map((dayStr) => {
                           const info = settings?.hours[dayStr];
                           if (!info) return null;
@@ -105,9 +87,9 @@ export default function Contact() {
                           const isClosed = info.isClosed;
                           
                           return (
-                             <li key={dayStr} className="flex justify-between items-center text-sm">
-                                <span className="font-bold text-slate-700">{dayNames[parseInt(dayStr)]}</span>
-                                <span className={isClosed ? "text-slate-400 font-medium" : "text-slate-600"}>
+                             <li key={dayStr} className="flex justify-between items-center text-[15px] pb-4 border-b border-stone-50 last:border-0 last:pb-0">
+                                <span className="font-serif text-lg text-stone-800">{dayNames[parseInt(dayStr)]}</span>
+                                <span className={isClosed ? "text-stone-400 font-light" : "text-stone-600 font-medium tracking-wide"}>
                                    {isClosed ? "Closed" : `${info.open} - ${info.close}`}
                                 </span>
                              </li>
@@ -119,9 +101,9 @@ export default function Contact() {
             </div>
 
             {/* Optional Small Form / Connect Section */}
-            <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 h-fit">
-               <h3 className="text-2xl font-bold text-slate-900 mb-2">Connect Instantly</h3>
-               <p className="text-slate-500 mb-8 leading-relaxed">
+            <div className="bg-white rounded-[40px] p-10 border border-stone-100 shadow-sm h-fit">
+               <h3 className="text-3xl font-serif text-[#1a1a1a] mb-4">Connect Instantly</h3>
+               <p className="text-stone-500 mb-10 leading-relaxed font-light">
                   Have a quick question? The fastest way to reach us is usually through WhatsApp.
                </p>
                
@@ -130,19 +112,18 @@ export default function Contact() {
                      href={`https://wa.me/${settings.whatsappNumber.replace(/[^0-9]/g, '')}`}
                      target="_blank"
                      rel="noreferrer"
-                     className="w-full flex items-center justify-center gap-3 bg-[#25D366] text-white py-4 rounded-xl font-bold shadow-md hover:bg-[#22bf5b] transition-colors"
+                     className="w-full flex items-center justify-center gap-3 bg-[#25D366] text-white py-5 rounded-full font-medium shadow hover:bg-[#22bf5b] transition-all hover:-translate-y-0.5 mb-8"
                   >
-                     <MessageCircle size={20} />
+                     <MessageCircle size={22} />
                      Message on WhatsApp
                   </a>
                )}
 
-               <div className="mt-8 pt-8 border-t border-slate-200">
-                  <h4 className="font-bold text-slate-900 mb-4">Ready for your treatment?</h4>
+               <div className="pt-8 border-t border-stone-100">
+                  <h4 className="font-serif text-[#1a1a1a] text-xl mb-6">Ready for your treatment?</h4>
                   <a
                      href="/book"
-                     className="w-full block text-center py-4 rounded-xl text-white font-bold shadow-md transition-opacity hover:opacity-90"
-                     style={{ backgroundColor: settings?.brand?.buttonColor || themeColor }}
+                     className="w-full block text-center py-5 rounded-full text-white font-medium shadow-md transition-all hover:-translate-y-0.5 bg-[#2a2626] hover:bg-black"
                   >
                      Book an Appointment
                   </a>

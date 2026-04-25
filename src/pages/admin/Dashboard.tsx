@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Booking } from '../../types';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, isToday, parseISO, format, subDays } from 'date-fns';
@@ -11,18 +11,16 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, 'bookings'));
-        setBookings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking)));
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
+    const unsubscribe = onSnapshot(collection(db, 'bookings'), (snapshot) => {
+      setBookings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking)));
+      setLoading(false);
+    }, (error) => {
+      console.error(error);
+      toast.error('Failed to load dashboard data');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (loading) {

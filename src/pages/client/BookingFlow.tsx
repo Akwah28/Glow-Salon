@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { ChevronLeft, Clock, User as UserIcon } from 'lucide-react';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Service, Staff, Booking, BusinessSettings } from '../../types';
-import { mergeWithDefaultSettings, defaultSettings } from '../../lib/settingsDefaults';
 import { format, isSameDay, parse, startOfToday, addDays, getDay } from 'date-fns';
 import { DayPicker, Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -15,12 +14,12 @@ type Step = 'service' | 'staff' | 'datetime' | 'details';
 
 export default function BookingFlow() {
   const navigate = useNavigate();
+  const { settings } = useOutletContext<{ settings: BusinessSettings | null }>();
   const [currentStep, setCurrentStep] = useState<Step>('service');
   
   // Data
   const [services, setServices] = useState<Service[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [settings, setSettings] = useState<BusinessSettings | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   
   // Selections
@@ -42,19 +41,16 @@ export default function BookingFlow() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [servicesSnapshot, staffSnapshot, settingsDoc] = await Promise.all([
-          getDocs(query(collection(db, 'services'), where('isActive', '==', true))),
-          getDocs(query(collection(db, 'staff'), where('isActive', '==', true))),
-          getDocs(query(collection(db, 'settings'), where('__name__', '==', 'general')))
+        const [servicesSnapshot, staffSnapshot] = await Promise.all([
+          getDocs(collection(db, 'services')),
+          getDocs(collection(db, 'staff'))
         ]);
 
-        setServices(servicesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Service)));
-        setStaffList(staffSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Staff)));
-        if (!settingsDoc.empty) {
-          setSettings(mergeWithDefaultSettings(settingsDoc.docs[0].data() as Partial<BusinessSettings>));
-        } else {
-          setSettings(defaultSettings);
-        }
+        const allServices = servicesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Service));
+        const allStaff = staffSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Staff));
+
+        setServices(allServices.filter(s => s.isActive !== false));
+        setStaffList(allStaff.filter(s => s.isActive !== false));
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load salon info.");
@@ -299,17 +295,16 @@ export default function BookingFlow() {
           );
         }
 
-        toast.success("Booking confirmed and emails sent successfully!");
+        toast.success("Booking confirmed successfully!");
       } catch (notifyErr: any) {
         console.error("Failed to send EmailJS notification:", notifyErr);
         if (notifyErr?.text) {
           console.error("EmailJS Error Response:", notifyErr.text);
         }
-        
-        toast.error(
-          "Booking confirmed, but email notifications failed to send. " + 
-          (notifyErr?.message || "There was a network error. You may need to disable Origin restrictions in your EmailJS dashboard or turn off ad-blockers.")
-        );
+        // Only show a warning if it's not a simple 'Failed to fetch' because the booking itself succeeded
+        if (notifyErr?.message && !notifyErr.message.includes("Failed to fetch")) {
+           toast.warning("Booking confirmed, but email notifications may be delayed.", { id: 'emailjs-warn' });
+        }
       }
 
       navigate('/success', { state: { booking: newBooking } });
@@ -508,52 +503,52 @@ export default function BookingFlow() {
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all font-medium text-slate-900"
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-stone-50 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-600 focus:bg-white transition-all font-medium text-stone-900"
                   placeholder="Jane Doe"
                 />
               </div>
               
                <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Phone Number <span className="text-rose-500">*</span></label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all font-medium text-slate-900"
-                  placeholder="0803 000 0000"
-                />
-              </div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Phone Number <span className="text-rose-500">*</span></label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg bg-stone-50 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-600 focus:bg-white transition-all font-medium text-stone-900"
+                    placeholder="0803 000 0000"
+                  />
+                </div>
 
                <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Email Address <span className="text-slate-400 font-normal normal-case">(Optional)</span></label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all font-medium text-slate-900"
-                  placeholder="jane@example.com"
-                />
-              </div>
+                 <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Email Address <span className="text-stone-400 font-normal normal-case">(Optional)</span></label>
+                 <input
+                   type="email"
+                   value={email}
+                   onChange={e => setEmail(e.target.value)}
+                   className="w-full px-3 py-2 text-sm rounded-lg bg-stone-50 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-600 focus:bg-white transition-all font-medium text-stone-900"
+                   placeholder="jane@example.com"
+                 />
+               </div>
 
                <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Message <span className="text-slate-400 font-normal normal-case">(Optional)</span></label>
-                <textarea
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all font-medium text-slate-900"
-                  placeholder="Any special requests or details..."
-                />
+                 <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Message <span className="text-stone-400 font-normal normal-case">(Optional)</span></label>
+                 <textarea
+                   value={message}
+                   onChange={e => setMessage(e.target.value)}
+                   rows={3}
+                   className="w-full px-3 py-2 text-sm rounded-lg bg-stone-50 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-600 focus:bg-white transition-all font-medium text-stone-900"
+                   placeholder="Any special requests or details..."
+                 />
               </div>
             </div>
 
-            <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex flex-col gap-1 text-sm shadow-sm">
-              <div className="flex justify-between items-start text-indigo-900">
+            <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col gap-1 text-sm shadow-sm">
+              <div className="flex justify-between items-start text-stone-900">
                 <span className="font-bold">{selectedService?.title}</span>
                 <span className="font-bold">₦{selectedService?.price.toLocaleString()}</span>
               </div>
-              <div className="text-indigo-700/80 font-medium text-xs mt-1">
+              <div className="text-stone-600 font-medium text-xs mt-1">
                  {selectedDate && format(selectedDate, 'MMM d, yyyy')} • {selectedTime}
               </div>
             </div>

@@ -50,8 +50,8 @@ export default function MyBookings() {
       const sortedBookings = bookingsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Booking))
         .sort((a, b) => {
-           const aCreated = a.createdAt?.seconds || 0;
-           const bCreated = b.createdAt?.seconds || 0;
+           const aCreated = typeof a.createdAt === 'object' ? (a.createdAt as any).seconds || 0 : a.createdAt || 0;
+           const bCreated = typeof b.createdAt === 'object' ? (b.createdAt as any).seconds || 0 : b.createdAt || 0;
            if (bCreated !== aCreated) return bCreated - aCreated;
            const dDiff = (b.date || '').localeCompare(a.date || '');
            if (dDiff !== 0) return dDiff;
@@ -182,6 +182,26 @@ Please find my receipt attached.`;
                     <p className="font-semibold text-slate-800">{format(parseISO(booking.date), 'EEEE, MMMM d, yyyy')}</p>
                     <p className="text-slate-500 mt-0.5">{booking.startTime}</p>
                   </div>
+
+                  {booking.date && booking.startTime && (() => {
+                     let startDt = new Date(`${booking.date}T${booking.startTime}:00`);
+                     if (isNaN(startDt.getTime())) return null;
+                     
+                     let endDt = new Date(startDt.getTime() + 60*60*1000);
+                     
+                     const formatDt = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+                     
+                     return (
+                        <a 
+                           href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Appointment at ' + (servicesMap[booking.serviceId] || 'Service'))}&dates=${formatDt(startDt)}/${formatDt(endDt)}&details=${encodeURIComponent('Appointment Details')}`}
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           className="inline-flex items-center justify-center gap-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg py-2 px-3 transition-colors w-full"
+                        >
+                           Add to Google Calendar
+                        </a>
+                     )
+                  })()}
 
                   {(booking.status === 'pending' || booking.status === 'confirmed') && (
                     <div className="pt-2 flex flex-col gap-2">

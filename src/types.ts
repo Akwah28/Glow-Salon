@@ -92,4 +92,10 @@ export interface BusinessSettings {
   integrations: {
     webhookUrl: string;
   };
+
+  socials: {
+    facebook: string;
+    instagram: string;
+    twitter: string;
+  };
 }

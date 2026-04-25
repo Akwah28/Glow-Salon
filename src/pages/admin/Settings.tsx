@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { BusinessSettings } from '../../types';
 import { defaultSettings, mergeWithDefaultSettings } from '../../lib/settingsDefaults';
 import { toast } from 'sonner';
 import { 
   Store, CalendarClock, Palette, Bell, CreditCard, 
-  Link2, Save, X, Plus
+  Link2, Save, X, Plus, Trash2
 } from 'lucide-react';
+
 
 const TABS = [
   { id: 'profile', label: 'Business Profile', icon: Store },
@@ -21,6 +22,8 @@ const TABS = [
 export default function Settings() {
   const [settings, setSettings] = useState<BusinessSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<BusinessSettings | null>(null);
+  const [adminEmails, setAdminEmails] = useState<string[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
@@ -38,6 +41,9 @@ export default function Settings() {
           setSettings(defaultSettings);
           setOriginalSettings(defaultSettings);
         }
+
+        const emailsSnapshot = await getDocs(collection(db, 'adminEmails'));
+        setAdminEmails(emailsSnapshot.docs.map(d => d.id));
       } catch (error) {
         toast.error('Failed to load settings');
       } finally {
@@ -47,6 +53,40 @@ export default function Settings() {
     
     fetchSettings();
   }, []);
+
+  const handleAddAdmin = async () => {
+    if (!newAdminEmail.trim() || !newAdminEmail.includes('@')) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+    const emailToAdd = newAdminEmail.trim().toLowerCase();
+    
+    if (adminEmails.includes(emailToAdd)) {
+      toast.error('This email is already an admin.');
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, 'adminEmails', emailToAdd), { addedAt: new Date().toISOString() });
+      setAdminEmails([...adminEmails, emailToAdd]);
+      setNewAdminEmail('');
+      toast.success('Admin added successfully.');
+    } catch (error) {
+      toast.error('Failed to add admin.');
+      console.error(error);
+    }
+  };
+
+  const handleRemoveAdmin = async (emailToRemove: string) => {
+    try {
+      await deleteDoc(doc(db, 'adminEmails', emailToRemove));
+      setAdminEmails(adminEmails.filter(email => email !== emailToRemove));
+      toast.success('Admin removed successfully.');
+    } catch (error) {
+      toast.error('Failed to remove admin.');
+      console.error(error);
+    }
+  };
 
   const handleSave = async () => {
     if (!settings) return;
@@ -545,6 +585,96 @@ export default function Settings() {
                 <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-2">Integrations</h3>
                 <div className="space-y-6">
 
+                   <div className="p-4 border border-rose-200 rounded-xl bg-white space-y-4 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                           <h4 className="font-bold text-rose-700 text-sm flex items-center gap-2">Danger Zone: Wipe User Data</h4>
+                           <p className="text-xs text-rose-500/80 mt-1">Permanently delete all bookings associated with a specific email address.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 min-w-0">
+                         <input 
+                           type="email" 
+                           id="wipeEmailInput"
+                           placeholder="user@example.com" 
+                           className="flex-1 min-w-0 w-full p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-sm focus:border-rose-300 focus:ring-1 focus:ring-rose-300 outline-none text-rose-900 placeholder:text-rose-300" 
+                         />
+                         <button 
+                           onClick={async () => {
+                             const emailInput = document.getElementById('wipeEmailInput') as HTMLInputElement;
+                             if (!emailInput || !emailInput.value.includes('@')) {
+                               toast.error('Please enter a valid email address');
+                               return;
+                             }
+                             const emailToWipe = emailInput.value.trim().toLowerCase();
+                             if (confirm(`Are you absolutely sure you want to delete ALL bookings for ${emailToWipe}? This cannot be undone.`)) {
+                               const toastId = toast.loading('Deleting bookings...');
+                               try {
+                                 const bookingsQuery = query(collection(db, 'bookings'), where('clientEmail', '==', emailToWipe));
+                                 const snapshot = await getDocs(bookingsQuery);
+                                 let count = 0;
+                                 for (const docSnap of snapshot.docs) {
+                                   await deleteDoc(doc(db, 'bookings', docSnap.id));
+                                   count++;
+                                 }
+                                 toast.success(`Deleted ${count} bookings for ${emailToWipe}`, { id: toastId });
+                                 emailInput.value = '';
+                               } catch (err) {
+                                 console.error(err);
+                                 toast.error('Failed to delete bookings', { id: toastId });
+                               }
+                             }
+                           }}
+                           className="px-4 py-2.5 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700 transition whitespace-nowrap"
+                         >
+                           Wipe Data
+                         </button>
+                      </div>
+                   </div>
+
+                   <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                           <h4 className="font-bold text-slate-800 text-sm">Authorized Admins</h4>
+                           <p className="text-xs text-slate-500">Link an email to backend allowing them to access the admin dashboard.</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex gap-2 min-w-0">
+                           <input 
+                             type="email" 
+                             value={newAdminEmail} 
+                             onChange={e => setNewAdminEmail(e.target.value)} 
+                             placeholder="email@example.com" 
+                             className="flex-1 min-w-0 w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm" 
+                           />
+                           <button 
+                             onClick={handleAddAdmin}
+                             className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition whitespace-nowrap"
+                           >
+                             Add Admin
+                           </button>
+                        </div>
+                        {adminEmails.length > 0 && (
+                          <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100">
+                             {adminEmails.map(email => (
+                               <div key={email} className="flex justify-between items-center p-3">
+                                 <span className="text-sm font-medium text-slate-700">{email}</span>
+                                 <button 
+                                   onClick={() => handleRemoveAdmin(email)}
+                                   className="text-rose-500 hover:bg-rose-50 p-1.5 rounded"
+                                   title="Remove Admin"
+                                 >
+                                   <Trash2 size={16} />
+                                 </button>
+                               </div>
+                             ))}
+                          </div>
+                        )}
+                      </div>
+                   </div>
+
                    <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-3">
                       <div>
                         <h4 className="font-bold text-slate-800 text-sm">EmailJS (Email Automation)</h4>
@@ -559,11 +689,50 @@ export default function Settings() {
                       </div>
                       <input 
                          type="url" 
-                         value={settings.integrations.webhookUrl} 
+                         value={settings.integrations?.webhookUrl || ''} 
                          onChange={e => updateField('integrations', 'webhookUrl', e.target.value)} 
                          placeholder="https://hooks.zapier.com/..." 
                          className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium" 
                       />
+                   </div>
+
+                   <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-4">
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">Social Media Links</h4>
+                        <p className="text-xs text-slate-500">Add your social profiles to show them in the footer.</p>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Facebook URL</label>
+                           <input 
+                             type="url" 
+                             value={settings.socials?.facebook || ''} 
+                             onChange={e => updateField('socials', 'facebook', e.target.value)} 
+                             placeholder="https://facebook.com/yourpage" 
+                             className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium" 
+                           />
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Instagram URL</label>
+                           <input 
+                             type="url" 
+                             value={settings.socials?.instagram || ''} 
+                             onChange={e => updateField('socials', 'instagram', e.target.value)} 
+                             placeholder="https://instagram.com/yourprofile" 
+                             className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium" 
+                           />
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">X (Twitter) URL</label>
+                           <input 
+                             type="url" 
+                             value={settings.socials?.twitter || ''} 
+                             onChange={e => updateField('socials', 'twitter', e.target.value)} 
+                             placeholder="https://x.com/yourprofile" 
+                             className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium" 
+                           />
+                        </div>
+                      </div>
                    </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, updateDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Booking } from '../../types';
 import { toast } from 'sonner';
@@ -12,49 +12,52 @@ export default function ManageBookings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const fetchReferences = async () => {
+      try {
+        const [servicesSnap, staffSnap] = await Promise.all([
+          getDocs(collection(db, 'services')),
+          getDocs(collection(db, 'staff'))
+        ]);
+        
+        const sMap: Record<string, {title: string, price: number}> = {};
+        servicesSnap.docs.forEach(d => { 
+          sMap[d.id] = {
+            title: d.data().title,
+            price: d.data().price || 0
+          }; 
+        });
+        setServicesMap(sMap);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [bookingsSnap, servicesSnap, staffSnap] = await Promise.all([
-        getDocs(query(collection(db, 'bookings'))),
-        getDocs(collection(db, 'services')),
-        getDocs(collection(db, 'staff'))
-      ]);
+        const stMap: Record<string, string> = {};
+        staffSnap.docs.forEach(d => { stMap[d.id] = d.data().name; });
+        setStaffMap(stMap);
+      } catch (error) {
+        toast.error('Failed to load related data');
+      }
+    };
 
-      const allBookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
+    fetchReferences();
+
+    const unsubscribe = onSnapshot(collection(db, 'bookings'), (snapshot) => {
+      const allBookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Booking));
       // Sort in memory: Newest created bookings first, fallback to date
       allBookings.sort((a, b) => {
-         const aCreated = a.createdAt?.seconds || 0;
-         const bCreated = b.createdAt?.seconds || 0;
+         const aCreated = typeof a.createdAt === 'object' ? (a.createdAt as any).seconds || 0 : a.createdAt || 0;
+         const bCreated = typeof b.createdAt === 'object' ? (b.createdAt as any).seconds || 0 : b.createdAt || 0;
          if (bCreated !== aCreated) return bCreated - aCreated;
          const dateDiff = (b.date || '').localeCompare(a.date || '');
          if (dateDiff === 0) return (b.startTime || '').localeCompare(a.startTime || '');
          return dateDiff;
       });
       setBookings(allBookings);
-      
-      const sMap: Record<string, {title: string, price: number}> = {};
-      servicesSnap.docs.forEach(d => { 
-        sMap[d.id] = {
-          title: d.data().title,
-          price: d.data().price || 0
-        }; 
-      });
-      setServicesMap(sMap);
-
-      const stMap: Record<string, string> = {};
-      staffSnap.docs.forEach(d => { stMap[d.id] = d.data().name; });
-      setStaffMap(stMap);
-      
-    } catch (error) {
-      toast.error('Failed to load data');
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      toast.error('Failed to load bookings');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const setStatus = async (id: string, status: Booking['status']) => {
     try {
@@ -62,7 +65,6 @@ export default function ManageBookings() {
       if (status === 'cancelled') updateData.cancelledBy = 'admin';
 
       await updateDoc(doc(db, 'bookings', id), updateData);
-      setBookings(bookings.map(b => b.id === id ? { ...b, ...updateData } : b));
       toast.success(`Booking marked as ${status}`);
     } catch (err) {
        toast.error("Failed to update status");
