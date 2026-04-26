@@ -35,10 +35,11 @@ export default function Services() {
   return (
     <div className="bg-[#f8f7f5] pb-20 selection:bg-stone-200 flex-1">
       {/* Header */}
-      <div className="relative py-32 text-center px-4 overflow-hidden border-b border-stone-200 bg-[#fefdfb]">
-         <div className="absolute inset-0 z-0 opacity-20 filter grayscale">
-            <img referrerPolicy="no-referrer" src="https://images.unsplash.com/photo-1521590832167-7bfcfaa6362f?auto=format&fit=crop&q=80&w=1600" alt="Salon background" className="w-full h-full object-cover" />
+      <div className="relative py-32 text-center px-4 overflow-hidden border-b border-stone-200 bg-stone-50">
+         <div className="absolute inset-0 z-0 opacity-40">
+            <img referrerPolicy="no-referrer" src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=1600" alt="Salon background" className="w-full h-full object-cover" />
          </div>
+         <div className="absolute inset-0 z-0 bg-gradient-to-t from-stone-50 via-stone-50/60 to-transparent"></div>
          <div className="relative z-10 max-w-3xl mx-auto">
             <h1 className="text-5xl sm:text-6xl font-serif text-[#1a1a1a] mb-6 tracking-tight drop-shadow-sm">Our Services</h1>
             <p className="text-stone-500 max-w-2xl mx-auto text-lg leading-relaxed font-light">

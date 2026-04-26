@@ -1,19 +1,20 @@
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import fs from 'fs';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // API Route: Health Check
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
 
   // API Route: Secrets Management (Cleared out for EmailJS transition)
   app.get('/api/secrets', (req, res) => {

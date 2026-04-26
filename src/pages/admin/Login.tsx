@@ -18,9 +18,12 @@ export default function Login() {
       await signInWithPopup(auth, provider);
       navigate('/admin/dashboard');
     } catch (error: any) {
-      console.error("Login Error:", error);
+      if (error.code !== 'auth/popup-closed-by-user') {
+        console.error("Login Error:", error);
+      }
+      
       if (error.code === 'auth/popup-closed-by-user') {
-        toast.info('Sign-in popup closed. Please try again or open the app in a new tab if issues persist.', { duration: 6000 });
+        toast.error('Sign-in was cancelled. This often happens in preview frames; try opening the app in a new tab.', { duration: 6000, id: 'popup-closed' });
       } else if (error.code === 'auth/popup-blocked' || error.message?.toLowerCase().includes('popup')) {
         toast.error('The sign-in popup was blocked by your browser. Please open the app in a new tab to sign in.', { duration: 6000 });
       } else if (error.code === 'auth/unauthorized-domain') {

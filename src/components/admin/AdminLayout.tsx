@@ -21,7 +21,7 @@ export default function AdminLayout() {
       try {
         const adminDoc = await getDoc(doc(db, 'admins', user.uid));
         const adminEmailDoc = user.email ? await getDoc(doc(db, 'adminEmails', user.email)) : null;
-        const isSuperAdminEmail = user.email === 'godgiftakwah28@gmail.com' || user.email === 'godgiftkabariledumakwah@gmail.com';
+        const isSuperAdminEmail = user.email === 'godgiftakwah28@gmail.com' || user.email === 'godgiftkabariledumakwah@gmail.com' || user.email === 'truebondlove@gmail.com';
         
         if (!adminDoc.exists() && (!adminEmailDoc || !adminEmailDoc.exists()) && !isSuperAdminEmail) {
           auth.signOut();

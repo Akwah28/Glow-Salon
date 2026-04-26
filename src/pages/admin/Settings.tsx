@@ -601,30 +601,49 @@ export default function Settings() {
                            className="flex-1 min-w-0 w-full p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-sm focus:border-rose-300 focus:ring-1 focus:ring-rose-300 outline-none text-rose-900 placeholder:text-rose-300" 
                          />
                          <button 
-                           onClick={async () => {
+                           onClick={() => {
                              const emailInput = document.getElementById('wipeEmailInput') as HTMLInputElement;
                              if (!emailInput || !emailInput.value.includes('@')) {
                                toast.error('Please enter a valid email address');
                                return;
                              }
-                             const emailToWipe = emailInput.value.trim().toLowerCase();
-                             if (confirm(`Are you absolutely sure you want to delete ALL bookings for ${emailToWipe}? This cannot be undone.`)) {
-                               const toastId = toast.loading('Deleting bookings...');
-                               try {
-                                 const bookingsQuery = query(collection(db, 'bookings'), where('clientEmail', '==', emailToWipe));
-                                 const snapshot = await getDocs(bookingsQuery);
-                                 let count = 0;
-                                 for (const docSnap of snapshot.docs) {
-                                   await deleteDoc(doc(db, 'bookings', docSnap.id));
-                                   count++;
+                             const emailToWipe = emailInput.value.trim();
+                             
+                             toast.error(`Delete all bookings for ${emailToWipe}? This cannot be undone.`, {
+                               duration: 10000,
+                               action: {
+                                 label: 'Yes, Delete Permanently',
+                                 onClick: async () => {
+                                   const toastId = toast.loading('Deleting bookings...');
+                                   try {
+                                     // Query both exact and lowercased to handle potential casing differences
+                                     const qExact = query(collection(db, 'bookings'), where('clientEmail', '==', emailToWipe));
+                                     const qLower = query(collection(db, 'bookings'), where('clientEmail', '==', emailToWipe.toLowerCase()));
+                                     
+                                     const [snapExact, snapLower] = await Promise.all([
+                                       getDocs(qExact),
+                                       getDocs(qLower)
+                                     ]);
+                                     
+                                     const allDocs = new Map();
+                                     snapExact.docs.forEach(d => allDocs.set(d.id, d));
+                                     snapLower.docs.forEach(d => allDocs.set(d.id, d));
+                                     
+                                     let count = 0;
+                                     for (const [id] of allDocs) {
+                                       await deleteDoc(doc(db, 'bookings', id));
+                                       count++;
+                                     }
+                                     
+                                     toast.success(`Deleted ${count} booking(s) for ${emailToWipe}`, { id: toastId });
+                                     emailInput.value = '';
+                                   } catch (err) {
+                                     console.error(err);
+                                     toast.error('Failed to delete bookings', { id: toastId });
+                                   }
                                  }
-                                 toast.success(`Deleted ${count} bookings for ${emailToWipe}`, { id: toastId });
-                                 emailInput.value = '';
-                               } catch (err) {
-                                 console.error(err);
-                                 toast.error('Failed to delete bookings', { id: toastId });
                                }
-                             }
+                             });
                            }}
                            className="px-4 py-2.5 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700 transition whitespace-nowrap"
                          >
