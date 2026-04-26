@@ -27,6 +27,9 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [clearDataOptions, setClearDataOptions] = useState({ bookings: true, services: false, staff: false });
+  const [clearDataConfirmation, setClearDataConfirmation] = useState('');
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -85,6 +88,57 @@ export default function Settings() {
     } catch (error) {
       toast.error('Failed to remove admin.');
       console.error(error);
+    }
+  };
+
+  const handleClearTestData = async () => {
+    if (clearDataConfirmation !== 'CLEAR DATA') {
+      toast.error('Please type CLEAR DATA to confirm.');
+      return;
+    }
+
+    setShowClearDataModal(false);
+    const toastId = toast.loading('Clearing selected test data...');
+
+    try {
+      let countBookings = 0;
+      let countServices = 0;
+      let countStaff = 0;
+
+      if (clearDataOptions.bookings) {
+        const snapshot = await getDocs(collection(db, 'bookings'));
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(db, 'bookings', docSnap.id));
+          countBookings++;
+        }
+      }
+
+      if (clearDataOptions.services) {
+        const snapshot = await getDocs(collection(db, 'services'));
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(db, 'services', docSnap.id));
+          countServices++;
+        }
+      }
+
+      if (clearDataOptions.staff) {
+        const snapshot = await getDocs(collection(db, 'staff'));
+        for (const docSnap of snapshot.docs) {
+          await deleteDoc(doc(db, 'staff', docSnap.id));
+          countStaff++;
+        }
+      }
+
+      toast.success(`Cleared ${countBookings} bookings, ${countServices} services, ${countStaff} staff records.`, { id: toastId, duration: 8000 });
+      setClearDataConfirmation('');
+      
+      // Auto-reload to clear any globally cached stuff for admin
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to clear test data. Check console.', { id: toastId });
     }
   };
 
@@ -652,6 +706,24 @@ export default function Settings() {
                       </div>
                    </div>
 
+                   <div className="p-4 border border-rose-200 rounded-xl bg-white space-y-4 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                           <h4 className="font-bold text-rose-700 text-sm flex items-center gap-2">Danger Zone: Clear Test/Demo Data</h4>
+                           <p className="text-xs text-rose-500/80 mt-1">Safely bulk-delete fake testing records before launch.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 min-w-0">
+                         <button 
+                           onClick={() => setShowClearDataModal(true)}
+                           className="px-4 py-2.5 bg-rose-100 text-rose-700 rounded-lg font-bold text-sm hover:bg-rose-200 transition whitespace-nowrap"
+                         >
+                           Open Clear Data Tool
+                         </button>
+                      </div>
+                   </div>
+
                    <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-4">
                       <div className="flex justify-between items-start">
                         <div>
@@ -759,6 +831,78 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {showClearDataModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-rose-600 flex items-center gap-2">
+                  <Trash2 size={24} />
+                  Clear Test Data
+                </h3>
+                <button onClick={() => setShowClearDataModal(false)} className="text-slate-400 hover:text-slate-600 p-1 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <p className="text-sm text-slate-600">Select the data you want to permanently delete. Your business settings and admin emails will <strong>not</strong> be affected.</p>
+                
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-rose-50 transition-colors">
+                    <input type="checkbox" checked={clearDataOptions.bookings} onChange={(e) => setClearDataOptions(prev => ({ ...prev, bookings: e.target.checked }))} className="w-5 h-5 text-rose-600 rounded border-slate-300" />
+                    <div>
+                      <span className="text-sm font-bold text-slate-900 block">Clear All Bookings</span>
+                      <span className="text-xs text-slate-500">Deletes all past and future bookings</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-rose-50 transition-colors">
+                    <input type="checkbox" checked={clearDataOptions.services} onChange={(e) => setClearDataOptions(prev => ({ ...prev, services: e.target.checked }))} className="w-5 h-5 text-rose-600 rounded border-slate-300" />
+                    <div>
+                      <span className="text-sm font-bold text-slate-900 block">Clear All Services</span>
+                      <span className="text-xs text-slate-500">Deletes all service offerings</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-rose-50 transition-colors">
+                    <input type="checkbox" checked={clearDataOptions.staff} onChange={(e) => setClearDataOptions(prev => ({ ...prev, staff: e.target.checked }))} className="w-5 h-5 text-rose-600 rounded border-slate-300" />
+                    <div>
+                      <span className="text-sm font-bold text-slate-900 block">Clear All Staff</span>
+                      <span className="text-xs text-slate-500">Deletes all staff profiles</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Type "CLEAR DATA" to confirm</label>
+                  <input 
+                    type="text" 
+                    value={clearDataConfirmation}
+                    onChange={(e) => setClearDataConfirmation(e.target.value)}
+                    placeholder="CLEAR DATA"
+                    className="w-full p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-900 font-mono text-center focus:ring-rose-500 focus:border-rose-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setShowClearDataModal(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition">
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleClearTestData}
+                  disabled={clearDataConfirmation !== 'CLEAR DATA' || (!clearDataOptions.bookings && !clearDataOptions.services && !clearDataOptions.staff)}
+                  className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Delete Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

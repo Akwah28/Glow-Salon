@@ -8,7 +8,6 @@ import { format, isSameDay, parse, startOfToday, addDays, getDay } from 'date-fn
 import { DayPicker, Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { toast } from 'sonner';
-import emailjs from '@emailjs/browser';
 
 type Step = 'service' | 'staff' | 'datetime' | 'details';
 
@@ -277,34 +276,34 @@ export default function BookingFlow() {
         const OWNER_TEMPLATE_ID = "template_ktx4nxr";
         const CLIENT_TEMPLATE_ID = "template_glyzo0m";
 
+        const sendEmailJS = async (templateId: string) => {
+          const res = await fetch('/api/emailjs/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              service_id: SERVICE_ID,
+              template_id: templateId,
+              user_id: PUBLIC_KEY,
+              template_params: templateParams
+            })
+          });
+          if (!res.ok) {
+            throw new Error(await res.text() || 'Failed to send email');
+          }
+        };
+
         // 1. Send email to owner/admin
-        await emailjs.send(
-          SERVICE_ID,
-          OWNER_TEMPLATE_ID,
-          templateParams,
-          PUBLIC_KEY
-        );
+        await sendEmailJS(OWNER_TEMPLATE_ID);
 
         // 2. Send confirmation to client (only if email provided)
         if (email) {
-          await emailjs.send(
-            SERVICE_ID,
-            CLIENT_TEMPLATE_ID,
-            templateParams,
-            PUBLIC_KEY
-          );
+          await sendEmailJS(CLIENT_TEMPLATE_ID);
         }
 
         toast.success("Booking confirmed successfully!");
       } catch (notifyErr: any) {
         console.error("Failed to send EmailJS notification:", notifyErr);
-        if (notifyErr?.text) {
-          console.error("EmailJS Error Response:", notifyErr.text);
-        }
-        // Only show a warning if it's not a simple 'Failed to fetch' because the booking itself succeeded
-        if (notifyErr?.message && !notifyErr.message.includes("Failed to fetch")) {
-           toast.warning("Booking confirmed, but email notifications may be delayed.", { id: 'emailjs-warn' });
-        }
+        toast.warning("Booking confirmed, but email notifications may be delayed.", { id: 'emailjs-warn' });
       }
 
       navigate('/success', { state: { booking: newBooking } });
